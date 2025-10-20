@@ -1,0 +1,24 @@
+<!-- Logo del sistema -->
+<div class="logo">
+    <a href="#" class="simple-text logo-mini">
+      <div class="logo-img">
+          <div class="logo-text">ITM</div>
+      </div>
+    </a>
+    <a href="#" class="simple-text logo-normal">
+        Sistema ITM
+    </a>
+</div>
+
+<!-- Navegación del sidebar -->
+<div class="sidebar-wrapper">
+    <ul class="nav">
+        <!-- Iterar sobre cada elemento del menú -->
+        <li routerLinkActive="active" *ngFor="let menuItem of menuItems" class="{{menuItem.class}} nav-item">
+            <a [routerLink]="[menuItem.path]">
+                <i class="now-ui-icons {{menuItem.icon}}"></i>
+                <p>{{menuItem.title}}</p>
+            </a>
+        </li>
+    </ul>
+</div>
