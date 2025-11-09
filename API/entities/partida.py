@@ -5,7 +5,7 @@ Entidad Partida
 Modelo de Partida con SQLAlchemy y esquemas de validación con Pydantic.
 """
 
-from sqlalchemy import Column, Integer, Float, DateTime, String, ForeignKey
+from sqlalchemy import Column, Float, DateTime, String, ForeignKey
 from sqlalchemy.orm import relationship
 from pydantic import BaseModel, Field, validator
 from datetime import datetime
@@ -22,11 +22,11 @@ class Partida(Base):
     Modelo de Partida que representa la tabla 'partidas'
 
     Atributos:
-        id (int): Identificador único de la partida
-        usuario_id (int): ID del usuario que jugó la partida
-        juego_id (int): ID del juego en el que participó
+        id (uuid.UUID): Identificador único de la partida
+        usuario_id (uuid.UUID): ID del usuario que jugó la partida
+        juego_id (uuid.UUID): ID del juego en el que participó
         costo_apuesta (float): Monto de la apuesta
-        premio_id (int): ID del premio ganado (nullable si no ganó)
+        premio_id (uuid.UUID): ID del premio ganado (nullable si no ganó)
         fecha (datetime): Momento en que se jugó la partida
         estado (str): Estado de la partida ("ganada", "perdida", "en curso")
     """
@@ -66,10 +66,10 @@ class Partida(Base):
 class PartidaBase(BaseModel):
     """Esquema base para Partida"""
 
-    usuario_id: int = Field(..., description="ID del usuario que juega")
-    juego_id: int = Field(..., description="ID del juego en el que participa")
+    usuario_id: uuid.UUID = Field(..., description="ID del usuario que juega")
+    juego_id: uuid.UUID = Field(..., description="ID del juego en el que participa")
     costo_apuesta: float = Field(..., ge=0, description="Monto de la apuesta")
-    premio_id: Optional[int] = Field(
+    premio_id: Optional[uuid.UUID] = Field(
         None, description="ID del premio ganado, si aplica"
     )
     fecha: datetime = Field(
@@ -81,7 +81,15 @@ class PartidaBase(BaseModel):
 
     @validator("estado")
     def validar_estado(cls, v: str) -> str:
-        estados_validos = {"ganada", "perdida", "en curso"}
+        estados_validos = {
+            "ganada",
+            "perdida",
+            "en curso",
+            "inicio",
+            "en_curso",
+            "finalizada",
+            "cancelada",
+        }
         if v.lower() not in estados_validos:
             raise ValueError(f"El estado debe ser uno de: {', '.join(estados_validos)}")
         return v.lower()
@@ -97,13 +105,21 @@ class PartidaUpdate(BaseModel):
     """Esquema para actualizar una partida"""
 
     costo_apuesta: Optional[float] = Field(None, ge=0)
-    premio_id: Optional[int] = Field(None)
+    premio_id: Optional[uuid.UUID] = Field(None)
     estado: Optional[str] = Field(None)
 
     @validator("estado")
     def validar_estado(cls, v: Optional[str]) -> Optional[str]:
         if v is not None:
-            estados_validos = {"ganada", "perdida", "en curso"}
+            estados_validos = {
+                "ganada",
+                "perdida",
+                "en curso",
+                "inicio",
+                "en_curso",
+                "finalizada",
+                "cancelada",
+            }
             if v.lower() not in estados_validos:
                 raise ValueError(
                     f"El estado debe ser uno de: {', '.join(estados_validos)}"
@@ -115,7 +131,7 @@ class PartidaUpdate(BaseModel):
 class PartidaResponse(PartidaBase):
     """Esquema para respuesta de partida"""
 
-    id: int
+    id: uuid.UUID
 
     class Config:
         from_attributes = True

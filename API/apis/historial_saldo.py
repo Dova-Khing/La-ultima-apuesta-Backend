@@ -2,44 +2,41 @@
 API de Historial de Saldo - Endpoints para gestión del historial de movimientos
 """
 
-from typing import List
+from typing import List, Optional
 from uuid import UUID
-
-from ORM.crud.historial_saldo_crud import HistorialSaldoCRUD
-from ORM.database.config import get_db
-from fastapi import APIRouter, Depends, HTTPException, status
-from ORM.schemas import (
+from crud.historial_saldo_crud import HistorialSaldoCRUD
+from database.config import get_db
+from fastapi import APIRouter, Depends, HTTPException, status, Query
+from schemas import (
     HistorialSaldoCreate,
     HistorialSaldoResponse,
     HistorialSaldoUpdate,
     RespuestaAPI,
 )
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import (
+    IntegrityError,
+)  # Importación clave para manejar errores de FK
 
 router = APIRouter(prefix="/historial-saldo", tags=["historial_saldo"])
 
 
 @router.get("/", response_model=List[HistorialSaldoResponse])
 async def obtener_historial(
-    skip: int = 0, limit: int = 100, db: Session = Depends(get_db)
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=100),
+    db: Session = Depends(get_db),
 ):
-    """
-     Obtener el historial de movimientos de saldo.
-
-    Args:
-        skip (int, opcional): Número de registros a omitir en la consulta. Por defecto 0.
-        limit (int, opcional): Número máximo de registros a devolver. Por defecto 100.
-        db (Session): Sesión de base de datos proporcionada por dependencia.
-
-    Returns:
-        List[HistorialSaldoResponse]: Lista de registros de historial de saldo.
-
-    Raises:
-        HTTPException(500): Si ocurre un error al obtener el historial.
-    """
+    """Obtener el historial de movimientos de saldo."""
     try:
-        return HistorialSaldoCRUD.obtener_historial(db, skip=skip, limit=limit)
+        #  Instanciar la clase CRUD
+        crud = HistorialSaldoCRUD(db)
+        #  Llamar al método de la instancia
+        return crud.obtener_todos(
+            skip=skip, limit=limit
+        )  # Asumo que tu método es 'obtener_todos'
     except Exception as e:
+        # Si tienes paginación avanzada, el error puede estar en la serialización.
         raise HTTPException(
             status_code=500, detail=f"Error al obtener historial: {str(e)}"
         )
@@ -47,23 +44,11 @@ async def obtener_historial(
 
 @router.get("/{historial_id}", response_model=HistorialSaldoResponse)
 async def obtener_historial_por_id(historial_id: UUID, db: Session = Depends(get_db)):
-    """
-    Obtener un registro de historial de saldo por su ID.
-
-    Args:
-        historial_id (UUID): Identificador único del registro.
-        db (Session): Sesión de base de datos proporcionada por dependencia.
-
-    Returns:
-        HistorialSaldoResponse: Información del registro solicitado.
-
-    Raises:
-        HTTPException(404): Si no se encuentra el registro.
-        HTTPException(500): Si ocurre un error al consultar el registro.
-
-    """
+    """Obtener un registro de historial de saldo por su ID."""
     try:
-        registro = HistorialSaldoCRUD.obtener_por_id(db, historial_id)
+        # Instanciar la clase CRUD
+        crud = HistorialSaldoCRUD(db)
+        registro = crud.obtener_por_id(historial_id)
         if not registro:
             raise HTTPException(status_code=404, detail="Registro no encontrado")
         return registro
@@ -73,29 +58,34 @@ async def obtener_historial_por_id(historial_id: UUID, db: Session = Depends(get
         )
 
 
-@router.post("/", response_model=HistorialSaldoResponse, status_code=201)
+@router.post(
+    "/", response_model=HistorialSaldoResponse, status_code=status.HTTP_201_CREATED
+)
 async def crear_historial(
     historial_data: HistorialSaldoCreate, db: Session = Depends(get_db)
 ):
-    """
-    rear un nuevo registro en el historial de saldo.
+    """Crear un nuevo registro en el historial de saldo."""
+    #  Instanciar la clase CRUD
+    crud = HistorialSaldoCRUD(db)
 
-    Args:
-        historial_data (HistorialSaldoCreate): Datos para crear el registro de historial.
-        db (Session): Sesión de base de datos proporcionada por dependencia.
-
-    Returns:
-        HistorialSaldoResponse: Información del registro creado.
-
-    Raises:
-        HTTPException(500): Si ocurre un error al crear el registro.
-
-    """
     try:
-        return HistorialSaldoCRUD.crear_historial(db, **historial_data.dict())
-    except Exception as e:
+        # Llamar al método de la instancia
+        return crud.crear_movimiento(
+            usuario_id=historial_data.usuario_id,
+            tipo=historial_data.tipo,
+            monto=historial_data.monto,
+        )
+    except IntegrityError:
+        # Capturar error de FK y devolver 400
         raise HTTPException(
-            status_code=500, detail=f"Error al crear registro: {str(e)}"
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Violación de Clave Foránea: Asegúrese que el 'usuario_id' es un UUID de un usuario existente.",
+        )
+    except Exception as e:
+        # Para otros errores internos
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error interno al crear registro: {str(e)}",
         )
 
 
@@ -105,28 +95,19 @@ async def actualizar_historial(
     historial_data: HistorialSaldoUpdate,
     db: Session = Depends(get_db),
 ):
-    """
-    Actualizar un registro existente del historial de saldo.
-
-    Args:
-        historial_id (UUID): Identificador único del registro a actualizar.
-        historial_data (HistorialSaldoUpdate): Datos a modificar en el registro.
-        db (Session): Sesión de base de datos proporcionada por dependencia.
-
-    Returns:
-        HistorialSaldoResponse: Información del registro actualizado.
-
-    Raises:
-        HTTPException(404): Si no se encuentra el registro.
-        HTTPException(500): Si ocurre un error al actualizar.
-    """
+    """Actualizar un registro existente del historial de saldo."""
     try:
-        registro = HistorialSaldoCRUD.obtener_por_id(db, historial_id)
+        #  Instanciar la clase CRUD
+        crud = HistorialSaldoCRUD(db)
+        registro = crud.obtener_por_id(historial_id)
         if not registro:
             raise HTTPException(status_code=404, detail="Registro no encontrado")
 
-        campos = {k: v for k, v in historial_data.dict().items() if v is not None}
-        return HistorialSaldoCRUD.actualizar_historial(db, historial_id, **campos)
+        campos = historial_data.model_dump(
+            exclude_unset=True
+        )  # Uso moderno de Pydantic V2
+        # Asumo que tienes un método 'actualizar_registro' en tu CRUD
+        return crud.actualizar_registro(historial_id, **campos)
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Error al actualizar registro: {str(e)}"
@@ -135,29 +116,18 @@ async def actualizar_historial(
 
 @router.delete("/{historial_id}", response_model=RespuestaAPI)
 async def eliminar_historial(historial_id: UUID, db: Session = Depends(get_db)):
-    """
-    Eliminar un registro del historial de saldo.
-
-    Args:
-        historial_id (UUID): Identificador único del registro a eliminar.
-        db (Session): Sesión de base de datos proporcionada por dependencia.
-
-    Returns:
-        RespuestaAPI: Mensaje de confirmación y estado de la operación.
-
-    Raises:
-        HTTPException(404): Si no se encuentra el registro.
-        HTTPException(500): Si ocurre un error al eliminar.
-
-    """
+    """Eliminar un registro del historial de saldo."""
     try:
-        registro = HistorialSaldoCRUD.obtener_por_id(db, historial_id)
+        #  Instanciar la clase CRUD
+        crud = HistorialSaldoCRUD(db)
+        registro = crud.obtener_por_id(historial_id)
         if not registro:
             raise HTTPException(status_code=404, detail="Registro no encontrado")
 
-        eliminado = HistorialSaldoCRUD.eliminar_historial(db, historial_id)
+        eliminado = crud.eliminar_movimiento(historial_id)
         if eliminado:
             return RespuestaAPI(mensaje="Registro eliminado exitosamente", exito=True)
+
         raise HTTPException(status_code=500, detail="Error al eliminar registro")
     except Exception as e:
         raise HTTPException(

@@ -8,7 +8,11 @@ para la entidad Juego.
 
 from sqlalchemy.orm import Session
 from typing import List, Optional
-from ORM.entities.juego import Juego
+from entities.juego import Juego
+from entities.premio import Premio
+from entities.partida import Partida
+from entities.Boleto import Boleto
+from uuid import UUID
 
 
 class JuegoCRUD:
@@ -18,25 +22,14 @@ class JuegoCRUD:
         self.db = db
 
     def crear_juego(
-        db: Session,
+        self,
         nombre: str,
         descripcion: Optional[str],
         costo_base: float,
         creado_por: Optional[str] = None,
     ) -> Juego:
         """
-         Crea un nuevo juego en la base de datos.
-
-        Args:
-            db (Session): Sesión activa de SQLAlchemy.
-            nombre (str): Nombre del juego.
-            descripcion (Optional[str]): Descripción del juego.
-            costo_base (float): Costo base del juego.
-            creado_por (Optional[str]): Usuario que crea el juego.
-
-        Returns:
-            Juego: Objeto Juego creado y persistido en la base de datos.
-
+        Crea un nuevo juego en la base de datos.
         """
         juego = Juego(
             nombre=nombre,
@@ -44,64 +37,34 @@ class JuegoCRUD:
             costo_base=costo_base,
             creado_por=creado_por,
         )
-        db.add(juego)
-        db.commit()
-        db.refresh(juego)
+        self.db.add(juego)
+        self.db.commit()
+        self.db.refresh(juego)
         return juego
 
-    def obtener_por_id(db: Session, juego_id: int) -> Optional[Juego]:
+    def obtener_juegos(self, skip: int = 0, limit: int = 100) -> List[Juego]:
         """
-         Obtiene un juego por su ID.
-
-        Args:
-            db (Session): Sesión activa de SQLAlchemy.
-            juego_id (int): ID del juego a buscar.
-
-        Returns:
-            Optional[Juego]: Objeto Juego si existe, None si no.
+        Obtiene todos los juegos, con soporte para paginación.
         """
-        return db.query(Juego).filter(Juego.id == juego_id).first()
+        return self.db.query(Juego).offset(skip).limit(limit).all()
 
-    def obtener_todos(db: Session, skip: int = 0, limit: int = 100) -> List[Juego]:
-        """
+    def obtener_por_id(self, juego_id: UUID) -> Optional[Juego]:
+        """Obtiene un juego por su ID."""
+        return self.db.query(Juego).filter(Juego.id == juego_id).first()
 
-         Obtiene todos los juegos, con soporte para paginación.
-
-        Args:
-            db (Session): Sesión activa de SQLAlchemy.
-            skip (int, optional): Número de registros a omitir. Por defecto 0.
-            limit (int, optional): Número máximo de registros a devolver. Por defecto 100.
-
-        Returns:
-            List[Juego]: Lista de juegos obtenidos.
-
-        """
-        return db.query(Juego).offset(skip).limit(limit).all()
+    def obtener_juego(self, juego_id: UUID) -> Optional[Juego]:
+        return self.obtener_por_id(juego_id)
 
     def actualizar_juego(
-        db: Session,
-        juego_id: int,
+        self,
+        juego_id: UUID,
         nombre: Optional[str] = None,
         descripcion: Optional[str] = None,
         costo_base: Optional[float] = None,
         actualizado_por: Optional[str] = None,
     ) -> Optional[Juego]:
-        """
-        Actualiza un juego existente por su ID.
-
-        Args:
-            db (Session): Sesión activa de SQLAlchemy.
-            juego_id (int): ID del juego a actualizar.
-            nombre (Optional[str]): Nuevo nombre del juego.
-            descripcion (Optional[str]): Nueva descripción.
-            costo_base (Optional[float]): Nuevo costo base.
-            actualizado_por (Optional[str]): Usuario que realiza la actualización.
-
-        Returns:
-            Optional[Juego]: Objeto Juego actualizado, o None si no se encontró.
-
-        """
-        juego = db.query(Juego).filter(Juego.id == juego_id).first()
+        """Actualiza un juego existente por su ID."""
+        juego = self.db.query(Juego).filter(Juego.id == juego_id).first()
         if not juego:
             return None
 
@@ -114,25 +77,25 @@ class JuegoCRUD:
         if actualizado_por is not None:
             juego.actualizado_por = actualizado_por
 
-        db.commit()
-        db.refresh(juego)
+        self.db.commit()
+        self.db.refresh(juego)
         return juego
 
-    def eliminar_juego(db: Session, juego_id: int) -> bool:
-        """
-
-         Elimina un juego por su ID.
-
-        Args:
-            db (Session): Sesión activa de SQLAlchemy.
-            juego_id (int): ID del juego a eliminar.
-
-        Returns:
-            bool: True si se eliminó correctamente, False si no existe.
-        """
-        juego = db.query(Juego).filter(Juego.id == juego_id).first()
+    def eliminar_juego(self, juego_id: UUID) -> bool:
+        """Elimina un juego por su ID."""
+        juego = self.db.query(Juego).filter(Juego.id == juego_id).first()
         if not juego:
             return False
-        db.delete(juego)
-        db.commit()
+
+        relacionado = (
+            self.db.query(Premio).filter(Premio.juego_id == juego_id).first()
+            or self.db.query(Partida).filter(Partida.juego_id == juego_id).first()
+            or self.db.query(Boleto).filter(Boleto.juego_id == juego_id).first()
+        )
+
+        if relacionado:
+            return False
+
+        self.db.delete(juego)
+        self.db.commit()
         return True
