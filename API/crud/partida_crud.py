@@ -7,8 +7,9 @@ para la entidad Partida.
 """
 
 from sqlalchemy.orm import Session
-from typing import List, Optional
-from ORM.entities.partida import Partida
+from typing import List, Optional, Dict, Any
+from entities.partida import Partida
+from uuid import UUID
 
 
 class PartidaCRUD:
@@ -17,26 +18,24 @@ class PartidaCRUD:
 
     def crear_partida(
         self,
-        usuario_id: int,
-        juego_id: int,
+        usuario_id: UUID,
+        juego_id: UUID,
         costo_apuesta: float,
         estado: str,
-        premio_id: Optional[int] = None,
+        premio_id: Optional[UUID] = None,
     ):
         """
         Crea una nueva partida en la base de datos.
 
-         Args:
-             usuario_id (int): ID del usuario que juega.
-             juego_id (int): ID del juego.
-             costo_apuesta (float): Monto de la apuesta.
-             estado (str): Estado inicial de la partida.
-             premio_id (Optional[int]): ID del premio asociado, si existe.
+        Args:
+            usuario_id (UUID): ID del usuario que juega.
+            juego_id (UUID): ID del juego.
+            costo_apuesta (float): Monto de la apuesta.
+            estado (str): Estado inicial de la partida.
+            premio_id (Optional[UUID]): ID del premio asociado, si existe.
 
-         Returns:
-             Partida: Objeto Partida creado y persistido en la base de datos
-
-
+        Returns:
+            Partida: Objeto Partida creado y persistido en la base de datos
         """
         partida = Partida(
             usuario_id=usuario_id,
@@ -50,86 +49,72 @@ class PartidaCRUD:
         self.db.refresh(partida)
         return partida
 
-    def obtener_por_id(db: Session, partida_id: int) -> Optional[Partida]:
+    def obtener_por_id(self, partida_id: UUID) -> Optional[Partida]:
         """
         Obtiene una partida por su ID.
 
         Args:
-            db (Session): Sesión de base de datos.
-            partida_id (int): ID de la partida.
+            partida_id (UUID): ID de la partida.
 
         Returns:
             Optional[Partida]: Instancia de la partida o None si no existe.
-
-
         """
-        return db.query(Partida).filter(Partida.id == partida_id).first()
+        return self.db.query(Partida).filter(Partida.id == partida_id).first()
 
-    def obtener_todas(db: Session, skip: int = 0, limit: int = 100) -> List[Partida]:
+    def obtener_partidas(self, skip: int = 0, limit: int = 100) -> List[Partida]:
         """
-
         Obtiene todas las partidas con paginación opcional.
 
         Args:
-            db (Session): Sesión de base de datos.
             skip (int): Número de registros a saltar.
             limit (int): Número máximo de registros a retornar.
 
         Returns:
             List[Partida]: Lista de partidas.
-
-
         """
-        return db.query(Partida).offset(skip).limit(limit).all()
+        return self.db.query(Partida).offset(skip).limit(limit).all()
 
     def actualizar_partida(
-        db: Session,
-        partida_id: int,
-        estado: Optional[str] = None,
-        premio_id: Optional[int] = None,
+        self,
+        partida_id: UUID,
+        partida_data: Dict[str, Any],
     ) -> Optional[Partida]:
         """
-        Actualiza el estado o el premio de una partida.
+        Actualiza los campos de una partida.
 
         Args:
-            db (Session): Sesión de base de datos.
-            partida_id (int): ID de la partida a actualizar.
-            estado (Optional[str]): Nuevo estado de la partida.
-            premio_id (Optional[int]): Nuevo ID de premio asociado.
+            partida_id (UUID): ID de la partida a actualizar.
+            partida_data (Dict[str, Any]): Diccionario con los datos a actualizar.
 
         Returns:
             Optional[Partida]: Instancia actualizada de la partida o None si no existe.
-
-
         """
-        partida = db.query(Partida).filter(Partida.id == partida_id).first()
+        partida = self.db.query(Partida).filter(Partida.id == partida_id).first()
         if not partida:
             return None
 
-        if estado is not None:
-            partida.estado = estado
-        if premio_id is not None:
-            partida.premio_id = premio_id
+        # Actualiza dinámicamente los campos
+        for key, value in partida_data.items():
+            if value is not None:
+                setattr(partida, key, value)
 
-        db.commit()
-        db.refresh(partida)
+        self.db.commit()
+        self.db.refresh(partida)
         return partida
 
-    def eliminar_partida(db: Session, partida_id: int) -> bool:
+    def eliminar_partida(self, partida_id: UUID) -> bool:
         """
         Elimina una partida por su ID.
 
         Args:
-            db (Session): Sesión de base de datos.
-            partida_id (int): ID de la partida a eliminar.
+            partida_id (UUID): ID de la partida a eliminar.
 
         Returns:
             bool: True si se eliminó correctamente, False si no existe.
-
         """
-        partida = db.query(Partida).filter(Partida.id == partida_id).first()
+        partida = self.db.query(Partida).filter(Partida.id == partida_id).first()
         if not partida:
             return False
-        db.delete(partida)
-        db.commit()
+        self.db.delete(partida)
+        self.db.commit()
         return True

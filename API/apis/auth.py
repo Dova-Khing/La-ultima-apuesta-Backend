@@ -1,9 +1,9 @@
 from uuid import UUID
 
-from ORM.crud.usuario_crud import UsuarioCRUD
-from ORM.database.config import get_db
+from crud.usuario_crud import UsuarioCRUD
+from database.config import get_db
 from fastapi import APIRouter, Depends, HTTPException, status
-from ORM.schemas import RespuestaAPI, UsuarioLogin, UsuarioResponse
+from schemas import RespuestaAPI, UsuarioLogin, UsuarioResponse
 from sqlalchemy.orm import Session
 import re
 

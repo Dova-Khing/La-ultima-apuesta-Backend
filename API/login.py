@@ -4,7 +4,7 @@ API REST con FastAPI - Sin interfaz de consola
 """
 
 import uvicorn
-from ORM.apis import auth, usuario, premio, partida, juego, boleto, historial_saldo
+from apis import auth, usuario, premio, partida, juego, boleto, historial_saldo
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -70,7 +70,7 @@ def main():
     """Función principal para ejecutar el servidor"""
     print("Iniciando servidor FastAPI...")
     uvicorn.run(
-        "ORM.login:app",
+        "login:app",
         host="0.0.0.0",
         port=8000,
         reload=True,

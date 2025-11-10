@@ -6,8 +6,8 @@ import re
 from typing import List, Optional
 from uuid import UUID
 
-from ORM.auth.security import PasswordManager
-from ORM.entities.usuario import Usuario
+from auth.security import PasswordManager
+from entities.usuario import Usuario
 from sqlalchemy.orm import Session
 
 
