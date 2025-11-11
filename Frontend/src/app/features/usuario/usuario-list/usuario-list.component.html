@@ -1,0 +1,128 @@
+<!-- Panel de encabezado -->
+<div class="panel-header panel-header-sm">
+</div>
+
+<!-- Contenido principal -->
+<div class="main-content">
+  <div class="row">
+    
+    <!-- Vista de tabla -->
+    <div class="col-md-12">
+      <div class="card">
+        <div class="card-header">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <h4 class="card-title">Gestión de Productos</h4>
+              <p class="category">Administra el inventario de productos</p>
+            </div>
+            <button class="btn btn-primary" (click)="crearProducto()">
+              <i class="now-ui-icons ui-1_simple-add"></i>
+              Crear Producto
+            </button>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table">
+              <thead class="text-primary">
+                <th>ID</th>
+                <th>Nombre</th>
+                <th>Descripción</th>
+                <th>Precio</th>
+                <th>Categoría</th>
+                <th>Stock</th>
+                <th>Fecha Creación</th>
+                <th class="text-right">Acciones</th>
+              </thead>
+              <tbody>
+                <tr *ngFor="let producto of productos">
+                  <td>{{producto.id}}</td>
+                  <td>{{producto.nombre}}</td>
+                  <td>{{producto.descripcion}}</td>
+                  <td>{{formatearPrecio(producto.precio)}}</td>
+                  <td>
+                    <span class="badge badge-primary">{{producto.categoria}}</span>
+                  </td>
+                  <td>
+                    <span class="badge" [ngClass]="producto.stock > 20 ? 'badge-success' : producto.stock > 10 ? 'badge-warning' : 'badge-danger'">
+                      {{producto.stock}}
+                    </span>
+                  </td>
+                  <td>{{producto.fechaCreacion}}</td>
+                  <td class="text-right">
+                    <button class="btn btn-sm btn-info" (click)="editarProducto(producto)" title="Editar">
+                      <i class="now-ui-icons ui-2_settings-90"></i>
+                    </button>
+                    <button class="btn btn-sm btn-danger ml-2" (click)="eliminarProducto(producto)" title="Eliminar">
+                      <i class="now-ui-icons ui-1_simple-remove"></i>
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Vista de grid con cards -->
+    <div class="col-md-12">
+      <div class="card card-plain">
+        <div class="card-header">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <h4 class="card-title">Vista de Productos</h4>
+              <p class="category">Visualización en grid de todos los productos</p>
+            </div>
+            <button class="btn btn-success" (click)="crearProducto()">
+              <i class="now-ui-icons ui-1_simple-add"></i>
+              Nuevo Producto
+            </button>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <!-- Card de producto individual -->
+            <div class="col-md-4 col-sm-6 mb-4" *ngFor="let producto of productos">
+              <div class="card product-card">
+                <div class="card-body">
+                  <div class="product-header">
+                    <h5 class="product-title">{{producto.nombre}}</h5>
+                    <span class="badge badge-primary">{{producto.categoria}}</span>
+                  </div>
+                  <p class="product-description">{{producto.descripcion}}</p>
+                  <div class="product-details">
+                    <div class="detail-item">
+                      <strong>Precio:</strong>
+                      <span class="price">{{formatearPrecio(producto.precio)}}</span>
+                    </div>
+                    <div class="detail-item">
+                      <strong>Stock:</strong>
+                      <span class="stock" [ngClass]="producto.stock > 20 ? 'text-success' : producto.stock > 10 ? 'text-warning' : 'text-danger'">
+                        {{producto.stock}} unidades
+                      </span>
+                    </div>
+                    <div class="detail-item">
+                      <strong>Fecha:</strong>
+                      <span class="date">{{producto.fechaCreacion}}</span>
+                    </div>
+                  </div>
+                  <div class="product-actions">
+                    <button class="btn btn-sm btn-info" (click)="editarProducto(producto)">
+                      <i class="now-ui-icons ui-2_settings-90"></i>
+                      Editar
+                    </button>
+                    <button class="btn btn-sm btn-danger" (click)="eliminarProducto(producto)">
+                      <i class="now-ui-icons ui-1_simple-remove"></i>
+                      Eliminar
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

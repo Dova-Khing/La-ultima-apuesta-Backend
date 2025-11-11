@@ -8,7 +8,9 @@ para la entidad Premio.
 
 from sqlalchemy.orm import Session
 from typing import List, Optional
-from ORM.entities.premio import Premio
+from entities.premio import Premio
+from uuid import UUID
+from sqlalchemy.exc import IntegrityError
 
 
 class PremioCRUD:
@@ -19,90 +21,50 @@ class PremioCRUD:
         self.db = db
 
     def crear_premio(
-        db: Session,
-        juego_id: int,
+        self,
+        juego_id: UUID,
         descripcion: str,
         valor: float,
         creado_por: Optional[str] = None,
     ) -> Premio:
         """
         Crea un nuevo premio y lo guarda en la base de datos
-
-        Args:
-        db (Session): Sesión de base de datos.
-            juego_id (int): ID del juego asociado.
-            descripcion (str): Descripción del premio.
-            valor (float): Valor del premio.
-            creado_por (Optional[str]): Nombre del usuario que creó el premio.
-
-        Returns:
-            Premio: Instancia del premio creado.
-
         """
-
         premio = Premio(
             juego_id=juego_id,
             descripcion=descripcion,
             valor=valor,
             creado_por=creado_por,
         )
-        db.add(premio)
-        db.commit()
-        db.refresh(premio)
+        self.db.add(premio)
+        self.db.commit()
+        self.db.refresh(premio)
         return premio
 
-    def obtener_por_id(db: Session, premio_id: int) -> Optional[Premio]:
+    def obtener_premio(self, premio_id: UUID) -> Optional[Premio]:
         """
-         Obtiene un premio por su ID.
-
-        Args:
-            db (Session): Sesión de base de datos.
-            premio_id (int): ID del premio.
-
-        Returns:
-            Optional[Premio]: Instancia del premio o None si no existe.
-
+        Obtiene un premio por su ID.
         """
-        return db.query(Premio).filter(Premio.id == premio_id).first()
+        return self.db.query(Premio).filter(Premio.id == premio_id).first()
 
-    def obtener_todos(db: Session, skip: int = 0, limit: int = 100) -> List[Premio]:
+    def obtener_premios(self, skip: int = 0, limit: int = 100) -> List[Premio]:
         """
         Obtiene todos los premios con paginación opcional.
-
-        Args:
-            db (Session): Sesión de base de datos.
-            skip (int): Número de registros a saltar.
-            limit (int): Número máximo de registros a retornar.
-
-        Returns:
-            List[Premio]: Lista de premios.
-
         """
-
-        return db.query(Premio).offset(skip).limit(limit).all()
+        return self.db.query(Premio).offset(skip).limit(limit).all()
 
     def actualizar_premio(
-        db: Session,
-        premio_id: int,
+        self,
+        premio_id: UUID,
         descripcion: Optional[str] = None,
         valor: Optional[float] = None,
+        juego_id: Optional[UUID] = None,
         actualizado_por: Optional[str] = None,
     ) -> Optional[Premio]:
         """
         Actualiza los atributos de un premio existente.
-
-        Args:
-            db (Session): Sesión de base de datos.
-            premio_id (int): ID del premio a actualizar.
-            descripcion (Optional[str]): Nueva descripción.
-            valor (Optional[float]): Nuevo valor.
-            actualizado_por (Optional[str]): Usuario que realiza la actualización.
-
-        Returns:
-            Optional[Premio]: Premio actualizado o None si no existe
-
         """
-        premio = db.query(Premio).filter(Premio.id == premio_id).first()
+        premio = self.db.query(Premio).filter(Premio.id == premio_id).first()
         if not premio:
             return None
 
@@ -110,28 +72,37 @@ class PremioCRUD:
             premio.descripcion = descripcion
         if valor is not None:
             premio.valor = valor
+        if juego_id is not None:
+            premio.juego_id = juego_id
+
         if actualizado_por is not None:
             premio.actualizado_por = actualizado_por
 
-        db.commit()
-        db.refresh(premio)
-        return premio
+        try:
+            self.db.commit()
+            self.db.refresh(premio)
+            return premio
+        except IntegrityError:
+            self.db.rollback()
+            return None
 
-    def eliminar_premio(db: Session, premio_id: int) -> bool:
+    def eliminar_premio(self, premio_id: UUID) -> bool:
         """
         Elimina un premio por su ID.
-
-        Args:
-            db (Session): Sesión de base de datos.
-            premio_id (int): ID del premio a eliminar.
-
-        Returns:
-            bool: True si se eliminó correctamente, False si no existe.
-
         """
-        premio = db.query(Premio).filter(Premio.id == premio_id).first()
+        premio = self.db.query(Premio).filter(Premio.id == premio_id).first()
         if not premio:
             return False
-        db.delete(premio)
-        db.commit()
-        return True
+
+        try:
+            self.db.delete(premio)
+            self.db.commit()
+            return True
+        except IntegrityError:
+
+            self.db.rollback()
+            return False
+        except Exception as e:
+            self.db.rollback()
+            print(f"Error desconocido al eliminar premio: {e}")
+            return False

@@ -5,10 +5,10 @@ API de Usuarios - Endpoints para gestión de usuarios
 from typing import List
 from uuid import UUID
 
-from ORM.crud.usuario_crud import UsuarioCRUD
-from ORM.database.config import get_db
+from crud.usuario_crud import UsuarioCRUD
+from database.config import get_db
 from fastapi import APIRouter, Depends, HTTPException, status
-from ORM.schemas import (
+from schemas import (
     CambioContrasena,
     RespuestaAPI,
     UsuarioCreate,
