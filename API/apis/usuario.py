@@ -201,14 +201,12 @@ async def actualizar_usuario(
     try:
         usuario_crud = UsuarioCRUD(db)
 
-        # Verificar que el usuario existe
         usuario_existente = usuario_crud.obtener_usuario(usuario_id)
         if not usuario_existente:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Usuario no encontrado"
             )
 
-        # Filtrar campos None para actualización
         campos_actualizacion = {
             k: v for k, v in usuario_data.dict().items() if v is not None
         }
@@ -247,7 +245,6 @@ async def eliminar_usuario(usuario_id: UUID, db: Session = Depends(get_db)):
     try:
         usuario_crud = UsuarioCRUD(db)
 
-        # Verificar que el usuario existe
         usuario_existente = usuario_crud.obtener_usuario(usuario_id)
         if not usuario_existente:
             raise HTTPException(
@@ -321,7 +318,6 @@ async def cambiar_contrasena(
     try:
         usuario_crud = UsuarioCRUD(db)
 
-        # Verificar que el usuario existe
         usuario_existente = usuario_crud.obtener_usuario(usuario_id)
         if not usuario_existente:
             raise HTTPException(
@@ -398,6 +394,3 @@ async def verificar_es_admin(usuario_id: UUID, db: Session = Depends(get_db)):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error al verificar administrador: {str(e)}",
         )
-
-
-# body, string_parameter, path parameter
