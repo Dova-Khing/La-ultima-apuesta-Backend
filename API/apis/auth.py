@@ -2,8 +2,9 @@ from uuid import UUID
 
 from crud.usuario_crud import UsuarioCRUD
 from database.config import get_db
+from entities.usuario import Usuario  # <-- AGREGAR ESTE IMPORT
 from fastapi import APIRouter, Depends, HTTPException, status
-from schemas import RespuestaAPI, UsuarioLogin, UsuarioResponse
+from schemas import RespuestaAPI, UsuarioLogin, UsuarioResponse, UsuarioCreate
 from sqlalchemy.orm import Session
 import re
 
@@ -12,84 +13,105 @@ router = APIRouter(prefix="/auth", tags=["autenticación"])
 
 @router.post("/login", response_model=UsuarioResponse)
 async def login(login_data: UsuarioLogin, db: Session = Depends(get_db)):
-    """
-     Autenticar un usuario con nombre de usuario/email y contraseña.
-
-    Parámetros (body):
-        login_data (UsuarioLogin): Contiene las credenciales de inicio de sesión.
-            - nombre_usuario (str): Nombre de usuario o email del usuario.
-            - contraseña (str): Contraseña asociada.
-
-        db (Session): Sesión de base de datos.
-
-    Retorna:
-        UsuarioResponse: Información del usuario autenticado si las credenciales son válidas.
-
-    Errores:
-        401 UNAUTHORIZED: Credenciales incorrectas o usuario inactivo.
-        500 INTERNAL_SERVER_ERROR: Error en el proceso de autenticación.
-    """
     try:
-        if not login_data.nombre_usuario or not login_data.contraseña:
+        print(f"Intento de login recibido:")
+        print(f"Nombre usuario: {login_data.nombre_usuario}")
+        print(f"Contraseña length: {len(login_data.contrasena)}")
+
+        if not login_data.nombre_usuario or not login_data.contrasena:
+            print("Campos vacíos")
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="El nombre de usuario/email y la contraseña son obligatorios",
             )
 
-        if len(login_data.contraseña) < 8:
+        if len(login_data.contrasena) < 8:
+            print("Contraseña muy corta")
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="La contraseña debe tener al menos 8 caracteres",
             )
 
-        if "@" in login_data.nombre_usuario:
-            patron_email = r"^[\w\.-]+@[\w\.-]+\.\w+$"
-            if not re.match(patron_email, login_data.nombre_usuario):
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="El formato del email no es válido",
-                )
-
         usuario_crud = UsuarioCRUD(db)
+        print("Llamando a autenticar_usuario...")
+
         usuario = usuario_crud.autenticar_usuario(
-            login_data.nombre_usuario, login_data.contraseña
+            login_data.nombre_usuario, login_data.contrasena
         )
 
         if not usuario:
+            print(
+                "autenticar_usuario retornó None - credenciales incorrectas o usuario inactivo"
+            )
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Credenciales incorrectas o usuario inactivo",
             )
 
+        print(f"Login exitoso para: {usuario.nombre}")
         return usuario
+
     except HTTPException:
+        print("HTTPException en login")
         raise
     except Exception as e:
+        print(f"ERROR inesperado en login: {str(e)}")
+        print(f"Tipo de error: {type(e)}")
+        import traceback
+
+        print(f"Traceback: {traceback.format_exc()}")
+
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"error durante el login:{str(e)}",
         )
 
 
+@router.post("/registro", response_model=UsuarioResponse)
+async def registrar_usuario(usuario_data: UsuarioCreate, db: Session = Depends(get_db)):
+    """
+    Registrar un nuevo usuario en el sistema
+    """
+    try:
+        print(f"Registro de usuario recibido:")
+        print(f"Nombre: {usuario_data.nombre}")
+        print(f"Usuario: {usuario_data.nombre_usuario}")
+        print(f"Email: {usuario_data.email}")
+
+        usuario_crud = UsuarioCRUD(db)
+
+        # Crear el usuario (el CRUD ya tiene todas las validaciones)
+        usuario = usuario_crud.crear_usuario(
+            nombre=usuario_data.nombre,
+            nombre_usuario=usuario_data.nombre_usuario,
+            email=usuario_data.email,
+            contrasena=usuario_data.contrasena,
+            telefono=usuario_data.telefono,
+            edad=usuario_data.edad,
+            saldo_inicial=usuario_data.saldo_inicial,
+            es_admin=False,  # Por defecto no es admin
+        )
+
+        print(f"Usuario registrado exitosamente: {usuario.nombre}")
+        return usuario
+
+    except ValueError as e:
+        print(f"Error de validación en registro: {str(e)}")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except Exception as e:
+        print(f"ERROR inesperado en registro: {str(e)}")
+        import traceback
+
+        print(f"Traceback: {traceback.format_exc()}")
+
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error al registrar usuario: {str(e)}",
+        )
+
+
 @router.post("/crear-admin", response_model=RespuestaAPI)
 async def crear_usuario_admin(db: Session = Depends(get_db)):
-    """
-     Crear un usuario administrador por defecto.
-
-    Parámetros:
-        db (Session): Sesión de base de datos.
-
-    Retorna:
-        RespuestaAPI: Mensaje de confirmación y credenciales temporales del administrador creado.
-
-    Notas:
-        - Si ya existe un administrador por defecto, retorna la información del existente.
-        - Genera una contraseña segura temporal que debe cambiarse en el primer inicio de sesión.
-
-    Errores:
-        400 BAD_REQUEST: Error en los datos enviados.
-        500 INTERNAL_SERVER_ERROR: Fallo al crear el administrador.
-    """
     try:
         usuario_crud = UsuarioCRUD(db)
 
@@ -135,28 +157,6 @@ async def crear_usuario_admin(db: Session = Depends(get_db)):
 
 @router.get("/verificar/{usuario_id}", response_model=RespuestaAPI)
 async def verificar_usuario(usuario_id: UUID, db: Session = Depends(get_db)):
-    """
-    Verificar si un usuario existe y se encuentra activo en el sistema.
-
-    Parámetros (path):
-        usuario_id (UUID): Identificador único del usuario.
-
-        db (Session): Sesión de base de datos.
-
-    Retorna:
-        RespuestaAPI: Información del usuario, incluyendo:
-            - usuario_id (UUID)
-            - nombre (str)
-            - email (str)
-            - edad (int)
-            - saldo_inicial (float)
-            - activo (bool)
-            - es_admin (bool)
-
-    Errores:
-        404 NOT_FOUND: Si el usuario no existe.
-        500 INTERNAL_SERVER_ERROR: Error en la verificación.
-    """
     try:
         usuario_crud = UsuarioCRUD(db)
         usuario = usuario_crud.obtener_usuario(usuario_id)
@@ -190,21 +190,6 @@ async def verificar_usuario(usuario_id: UUID, db: Session = Depends(get_db)):
 
 @router.get("/estado", response_model=RespuestaAPI)
 async def estado_autenticacion():
-    """
-     Verificar el estado del sistema de autenticación.
-
-    Parámetros:
-        Ninguno.
-
-    Retorna:
-        RespuestaAPI: Estado actual del sistema de autenticación, incluyendo:
-            - sistema (str): Nombre del sistema.
-            - version (str): Versión actual del sistema.
-            - autenticacion (str): Estado del módulo de autenticación.
-
-    Uso:
-        Permite verificar rápidamente si el servicio de autenticación está en funcionamiento.
-    """
     return RespuestaAPI(
         mensaje="Sistema de autenticación funcionando correctamente",
         exito=True,
@@ -214,3 +199,23 @@ async def estado_autenticacion():
             "autenticacion": "Activa",
         },
     )
+
+
+@router.get("/debug-usuarios")
+async def debug_usuarios(db: Session = Depends(get_db)):
+    """Endpoint temporal para debuggear usuarios"""
+    usuarios = db.query(Usuario).all()
+    return {
+        "total_usuarios": len(usuarios),
+        "usuarios": [
+            {
+                "id": str(u.id),
+                "nombre": u.nombre,
+                "nombre_usuario": u.nombre_usuario,
+                "email": u.email,
+                "activo": u.activo,
+                "es_admin": u.es_admin,
+            }
+            for u in usuarios
+        ],
+    }
