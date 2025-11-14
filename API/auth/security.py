@@ -1,15 +1,26 @@
 """
-Módulo de seguridad para manejo de contraseñas
+Módulo de seguridad para manejo de contraseñas y tokens JWT
 """
 
 import hashlib
 import secrets
 from typing import Tuple
+from datetime import datetime, timedelta
+from jose import JWTError, jwt
+import os
+
+
+SECRET_KEY = os.getenv(
+    "SECRET_KEY", "tu_clave_secreta_muy_segura_aqui_cambiar_en_produccion"
+)
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24
 
 
 class PasswordManager:
     """Gestor de contraseñas con hash seguro"""
 
+    # ... (tu código actual se mantiene igual)
     @staticmethod
     def hash_password(password: str) -> str:
         """
@@ -95,3 +106,97 @@ class PasswordManager:
         characters = string.ascii_letters + string.digits + "!@#$%^&*()_+-=[]{}|;:,.<>?"
         password = "".join(secrets.choice(characters) for _ in range(length))
         return password
+
+
+class TokenManager:
+    """Gestor de tokens JWT"""
+
+    @staticmethod
+    def create_access_token(data: dict, expires_delta: timedelta = None) -> str:
+        """
+        Crear un token JWT de acceso
+
+        Args:
+            data: Datos a incluir en el token
+            expires_delta: Tiempo de expiración personalizado
+
+        Returns:
+            Token JWT codificado
+        """
+        to_encode = data.copy()
+
+        if expires_delta:
+            expire = datetime.utcnow() + expires_delta
+        else:
+            expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+
+        to_encode.update(
+            {
+                "exp": expire,
+                "iat": datetime.utcnow(),
+                "type": "access_token",
+            }
+        )
+
+        encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+        return encoded_jwt
+
+    @staticmethod
+    def verify_token(token: str) -> dict:
+        """
+        Verificar y decodificar un token JWT
+
+        Args:
+            token: Token JWT a verificar
+
+        Returns:
+            Payload del token si es válido
+
+        Raises:
+            JWTError: Si el token es inválido o ha expirado
+        """
+        try:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+            return payload
+        except JWTError as e:
+            raise JWTError(f"Token inválido: {str(e)}")
+
+    @staticmethod
+    def get_user_id_from_token(token: str) -> str:
+        """
+        Obtener el ID de usuario desde un token JWT
+
+        Args:
+            token: Token JWT
+
+        Returns:
+            ID del usuario
+
+        Raises:
+            JWTError: Si el token es inválido
+        """
+        payload = TokenManager.verify_token(token)
+        user_id = payload.get("user_id")
+        if not user_id:
+            raise JWTError("Token no contiene user_id")
+        return user_id
+
+    @staticmethod
+    def get_username_from_token(token: str) -> str:
+        """
+        Obtener el nombre de usuario desde un token JWT
+
+        Args:
+            token: Token JWT
+
+        Returns:
+            Nombre de usuario
+
+        Raises:
+            JWTError: Si el token es inválido
+        """
+        payload = TokenManager.verify_token(token)
+        username = payload.get("sub")
+        if not username:
+            raise JWTError("Token no contiene nombre de usuario")
+        return username

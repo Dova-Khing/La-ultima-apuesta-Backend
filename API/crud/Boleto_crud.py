@@ -8,7 +8,8 @@ para la entidad Boleto.
 
 from sqlalchemy.orm import Session
 from typing import List, Optional
-from ORM.entities.Boleto import Boleto
+from entities.Boleto import Boleto
+from uuid import UUID
 
 
 class BoletoCRUD:
@@ -19,25 +20,14 @@ class BoletoCRUD:
 
     def crear_boleto(
         self,
-        usuario_id: int,
-        juego_id: int,
+        usuario_id: UUID,
+        juego_id: UUID,
         numeros: Optional[str],
         costo: float,
         creado_por: Optional[str] = None,
     ) -> Boleto:
         """
         Crea un nuevo boleto en la base de datos.
-
-        Args:
-            usuario_id (int): ID del usuario que compra el boleto.
-            juego_id (int): ID del juego asociado al boleto.
-            numeros (Optional[str]): Números seleccionados en el boleto.
-            costo (float): Costo del boleto.
-            creado_por (Optional[str], optional): Usuario que creó el registro.
-
-        Returns:
-            Boleto: Objeto Boleto recién creado.
-
         """
         boleto = Boleto(
             usuario_id=usuario_id,
@@ -51,17 +41,9 @@ class BoletoCRUD:
         self.db.refresh(boleto)
         return boleto
 
-    def obtener_por_id(self, boleto_id: int) -> Optional[Boleto]:
+    def obtener_por_id(self, boleto_id: UUID) -> Optional[Boleto]:
         """
-          Obtiene un boleto por su ID.
-
-        Args:
-            boleto_id (int): ID del boleto.
-
-        Returns:
-            Optional[Boleto]: Objeto Boleto si existe, None si no se encuentra.
-
-
+        Obtiene un boleto por su ID.
         """
         return self.db.query(Boleto).filter(Boleto.id == boleto_id).first()
 
@@ -70,22 +52,13 @@ class BoletoCRUD:
 
     def actualizar_boleto(
         self,
-        boleto_id: int,
+        boleto_id: UUID,
         numeros: Optional[str] = None,
+        costo: Optional[float] = None,
         actualizado_por: Optional[str] = None,
     ) -> Optional[Boleto]:
         """
-          Actualiza los datos de un boleto existente.
-
-        Args:
-            boleto_id (int): ID del boleto a actualizar.
-            numeros (Optional[str], optional): Números nuevos del boleto.
-            actualizado_por (Optional[str], optional): Usuario que realiza la actualización.
-
-        Returns:
-            Optional[Boleto]: Objeto Boleto actualizado si existe, None si no se encuentra.
-
-
+        Actualiza los datos de un boleto existente.
         """
         boleto = self.db.query(Boleto).filter(Boleto.id == boleto_id).first()
         if not boleto:
@@ -93,6 +66,10 @@ class BoletoCRUD:
 
         if numeros is not None:
             boleto.numeros = numeros
+
+        if costo is not None:
+            boleto.costo = costo
+
         if actualizado_por is not None:
             boleto.actualizado_por = actualizado_por
 
@@ -100,17 +77,9 @@ class BoletoCRUD:
         self.db.refresh(boleto)
         return boleto
 
-    def eliminar_boleto(self, boleto_id: int) -> bool:
+    def eliminar_boleto(self, boleto_id: UUID) -> bool:
         """
         Elimina un boleto de la base de datos.
-
-        Args:
-            boleto_id (int): ID del boleto a eliminar.
-
-        Returns:
-            bool: True si el boleto fue eliminado, False si no se encontró.
-
-
         """
         boleto = self.db.query(Boleto).filter(Boleto.id == boleto_id).first()
         if not boleto:
