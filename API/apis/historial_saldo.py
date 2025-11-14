@@ -16,7 +16,7 @@ from schemas import (
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import (
     IntegrityError,
-)  # Importación clave para manejar errores de FK
+)
 
 router = APIRouter(prefix="/historial-saldo", tags=["historial_saldo"])
 
@@ -29,14 +29,12 @@ async def obtener_historial(
 ):
     """Obtener el historial de movimientos de saldo."""
     try:
-        #  Instanciar la clase CRUD
+
         crud = HistorialSaldoCRUD(db)
-        #  Llamar al método de la instancia
-        return crud.obtener_todos(
-            skip=skip, limit=limit
-        )  # Asumo que tu método es 'obtener_todos'
+
+        return crud.obtener_todos(skip=skip, limit=limit)
     except Exception as e:
-        # Si tienes paginación avanzada, el error puede estar en la serialización.
+
         raise HTTPException(
             status_code=500, detail=f"Error al obtener historial: {str(e)}"
         )
@@ -46,7 +44,7 @@ async def obtener_historial(
 async def obtener_historial_por_id(historial_id: UUID, db: Session = Depends(get_db)):
     """Obtener un registro de historial de saldo por su ID."""
     try:
-        # Instanciar la clase CRUD
+
         crud = HistorialSaldoCRUD(db)
         registro = crud.obtener_por_id(historial_id)
         if not registro:
@@ -65,24 +63,24 @@ async def crear_historial(
     historial_data: HistorialSaldoCreate, db: Session = Depends(get_db)
 ):
     """Crear un nuevo registro en el historial de saldo."""
-    #  Instanciar la clase CRUD
+
     crud = HistorialSaldoCRUD(db)
 
     try:
-        # Llamar al método de la instancia
+
         return crud.crear_movimiento(
             usuario_id=historial_data.usuario_id,
             tipo=historial_data.tipo,
             monto=historial_data.monto,
         )
     except IntegrityError:
-        # Capturar error de FK y devolver 400
+
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Violación de Clave Foránea: Asegúrese que el 'usuario_id' es un UUID de un usuario existente.",
         )
     except Exception as e:
-        # Para otros errores internos
+
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error interno al crear registro: {str(e)}",
@@ -103,10 +101,8 @@ async def actualizar_historial(
         if not registro:
             raise HTTPException(status_code=404, detail="Registro no encontrado")
 
-        campos = historial_data.model_dump(
-            exclude_unset=True
-        )  # Uso moderno de Pydantic V2
-        # Asumo que tienes un método 'actualizar_registro' en tu CRUD
+        campos = historial_data.model_dump(exclude_unset=True)
+
         return crud.actualizar_registro(historial_id, **campos)
     except Exception as e:
         raise HTTPException(
