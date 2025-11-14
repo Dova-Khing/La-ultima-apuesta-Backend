@@ -6,8 +6,8 @@ import re
 from typing import List, Optional
 from uuid import UUID
 
-from ORM.auth.security import PasswordManager
-from ORM.entities.usuario import Usuario
+from auth.security import PasswordManager
+from entities.usuario import Usuario
 from sqlalchemy.orm import Session
 
 
@@ -117,17 +117,47 @@ class UsuarioCRUD:
         self, nombre_usuario: str, contrasena: str
     ) -> Optional[Usuario]:
         """Autenticar un usuario con nombre de usuario o email y contraseña"""
-        usuario = self.obtener_usuario_por_nombre_usuario(nombre_usuario)
-        if not usuario:
-            usuario = self.obtener_usuario_por_email(nombre_usuario)
+        try:
+            print(f"DEBUG: Autenticando usuario: {nombre_usuario}")
 
-        if not usuario or not usuario.activo:
+            usuario = self.obtener_usuario_por_nombre_usuario(nombre_usuario)
+            print(f"DEBUG: Busqueda por nombre_usuario: {usuario is not None}")
+
+            if not usuario:
+                usuario = self.obtener_usuario_por_email(nombre_usuario)
+                print(f"DEBUG: Busqueda por email: {usuario is not None}")
+
+            if not usuario:
+                print("DEBUG: Usuario no encontrado en BD")
+                return None
+
+            print(f"DEBUG: Usuario encontrado: {usuario.nombre}")
+            print(f"DEBUG: Usuario activo: {usuario.activo}")
+            print(f"DEBUG: Hash en BD: {usuario.contrasena_hash[:20]}...")
+
+            if not usuario.activo:
+                print("DEBUG: Usuario inactivo")
+                return None
+
+            print(f"DEBUG: Verificando contraseña...")
+            password_match = PasswordManager.verify_password(
+                contrasena, usuario.contrasena_hash
+            )
+            print(f"DEBUG: Contraseña coincide: {password_match}")
+
+            if password_match:
+                print(f"DEBUG: Autenticación exitosa para: {usuario.nombre}")
+                return usuario
+            else:
+                print("DEBUG: Contraseña incorrecta")
+                return None
+
+        except Exception as e:
+            print(f"DEBUG: ERROR en autenticar_usuario: {str(e)}")
+            import traceback
+
+            print(f"DEBUG: Traceback: {traceback.format_exc()}")
             return None
-
-        if PasswordManager.verify_password(contrasena, usuario.contrasena_hash):
-            return usuario
-
-        return None
 
     def cambiar_contrasena(
         self, usuario_id: UUID, contrasena_actual: str, nueva_contrasena: str

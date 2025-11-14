@@ -1,3 +1,5 @@
+# migrations/env.py
+
 from logging.config import fileConfig
 from sqlalchemy import engine_from_config, pool
 from alembic import context
@@ -5,18 +7,18 @@ import os
 import sys
 from dotenv import load_dotenv
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
+sys.path.append(os.path.join(os.getcwd(), "API"))
 
 
 load_dotenv()
 
-from ORM.entities.usuario import Usuario
-from ORM.entities.juego import Juego
-from ORM.entities.partida import Partida
-from ORM.entities.premio import Premio
-from ORM.entities.Boleto import Boleto
-from ORM.entities.historial_saldo import HistorialSaldo
-from ORM.entities.base import Base
+from entities.usuario import Usuario
+from entities.juego import Juego
+from entities.partida import Partida
+from entities.premio import Premio
+from entities.Boleto import Boleto
+from entities.historial_saldo import HistorialSaldo
+from entities.base import Base
 
 config = context.config
 if config.config_file_name is not None:
